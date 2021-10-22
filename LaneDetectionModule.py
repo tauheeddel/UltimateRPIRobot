@@ -60,7 +60,12 @@ def getLaneCurve(img, display = 2):
     cv2.imshow("Warp Points", imgWarpPoints)
     cv2.imshow("Histogram", imgHist)
     cv2.imshow("Result", imgResult)
-    return None
+
+    ### NORMALIZATION
+    curve = curve/100
+    if curve > 1:curve = 1
+    if curve < -1: curve = -1
+    return curve
 
 if __name__=='__main__':
     cap =cv2.VideoCapture('vid1.mp4')
