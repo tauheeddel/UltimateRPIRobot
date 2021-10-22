@@ -8,10 +8,13 @@ def thresholding(img):
     maskWhite = cv2.inRange(imgHsv, lowerWhote, upperWhite)
     return maskWhite
 
-def warpImg(img, points, w, h):
+def warpImg(img, points, w, h, inv=False):
     pts1 = np.float32(points)
     pts2 = np.float32([[0,0], [w,0],[0,h],[w,h]])
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    if inv:
+        matrix = cv2.getPerspectiveTransform(pts2, pts1)
+    else:
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
     imgWarp = cv2.warpPerspective(img, matrix, (w,h))
     return imgWarp
 
@@ -39,22 +42,27 @@ def drawPoints(img, points):
         cv2.circle(img, (int(points[x][0]), int (points[x][1])), 15, (0,0,255), cv2.FILLED)
     return img
 
-def getHistogram(img, minPier=0.1, display=False):
-    histValues = np.sum(img, axis=0)
-    #print(histValues)
+def getHistogram(img, minPer=0.1, display=False, region=1):
+    if region==1:
+        histValues = np.sum(img, axis=0)
+    else:
+        histValues = np.sum(img[img.shape[0]//region:,:], axis=0)
+    #print("histValues ", histValues)
+
     maxValue = np.max(histValues)
-    minValue = np.min(histValues)
+    minValue = minPer * maxValue
 
     indexArray = np.where(histValues>=minValue)
     basePoint = int(np.average(indexArray))
-    print(basePoint)
+    #print("basePoint ",basePoint)
 
     if display:
         imgHist = np.zeros((img.shape[0], img.shape[1], 3), np.uint8)
         for x, intensity in enumerate(histValues):
-            print((x,img.shape[0]))
-            print(x, intensity[0]/255)
-            cv2.line(imgHist, (x,img.shape[0]), (x, img.shape[0] - int(intensity[0]/255)), (255,0,255), 1)
+            # print("intensity ", intensity)
+            # print("(x,img.shape[0]), (x, img.shape[0] - intensity//255")
+            #print((x,img.shape[0]), (x,  intensity//255))
+            cv2.line(imgHist, (x,img.shape[0]), (x, img.shape[0] - intensity//255//region), (255,0,255), 1)
             cv2.circle(imgHist, (basePoint, img.shape[0]), 20, (0,255,255), cv2.FILLED)
         return basePoint, imgHist
     return basePoint

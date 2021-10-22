@@ -2,30 +2,64 @@ import cv2
 import numpy as np
 import utlis
 
-def getLaneCurve(img):
+curveList = []
+avgVal=10
+
+def getLaneCurve(img, display = 2):
     imgCopy = img.copy()
+    imgResult = img.copy()
 
     ####STEP 1
     imgThres=utlis.thresholding(img)
 
     ####STEP 2
-    h,w,c =  img.shape
+    hT,wT,c =  img.shape
 
     points = utlis.valTrackBars()
-    imgWarp=utlis.warpImg(img, points, w,h)
-    imgWarpPoints = utlis.drawPoints(img, points)
+    imgWarp=utlis.warpImg(imgThres, points, wT,hT)
+    imgWarpPoints = utlis.drawPoints(imgCopy, points)
 
     imgThres = cv2.resize(imgThres, (480, 240))
     imgWarp = cv2.resize(imgWarp, (480, 240))
     imgWarpPoints = cv2.resize(imgWarpPoints, (480, 240))
 
     #### STEP 3
-    basePoint, imgHist =  utlis.getHistogram(imgWarp, display=True)
+    middlePoint, imgHist = utlis.getHistogram(imgWarp, display=True, minPer=0.5, region=4)
+    curveAveragePoint, imgHist =  utlis.getHistogram(imgWarp, display=True, minPer= 0.9, region=4)
+    curveRaw = curveAveragePoint - middlePoint
+
+    #### STEP 4
+    curveList.append(curveRaw)
+    if len(curveList) > avgVal:
+        curveList.pop(0)
+    curve = int(sum(curveList)/len(curveList))
+
+    ### STEP 5
+    if display!=0:
+        imgInvWarp = utlis.warpImg(imgWarp, points, wT, hT, inv=True)
+        imgInvWarp=cv2.cvtColor(imgInvWarp, cv2.COLOR_GRAY2BGR)
+        imgInvWarp[0:hT//3, 0:wT] = 0,0,0
+        imgLaneColor = np.zeros_like(img)
+        imgLaneColor = cv2.bitwise_and(imgInvWarp, imgLaneColor)
+        imgResult = cv2.addWeighted(imgResult, 1, imgLaneColor, 1, 0)
+        midY = 450
+        cv2.putText(imgResult, str(curve), (wT//2 - 80, 85), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255))
+        cv2.line(imgResult, (wT//2, midY), (wT//2 + (curve*3), midY), (255,0,255), 5)
+        cv2.line(imgResult, ((wT // 2) + (curve * 3), midY - 25), (wT // 2 + (curve * 3), midY), (255, 0, 255), 5)
+        for x in range(-30, 30):
+            w = wT//20
+            cv2.line(imgResult, (w*x + int(curve//50), midY - 10),
+                     (w*x + int(curve//50), midY + 10), (0,0,255), 2)
+
+        #fps = cv2.getTickFrequency()/(cv2.getTickCount()- timer);
+        #cv2.putText(imgResult, 'FPS ' + str(int(fps)), (20,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
+
 
     cv2.imshow("Thres", imgThres)
     cv2.imshow("Warp", imgWarp)
     cv2.imshow("Warp Points", imgWarpPoints)
     cv2.imshow("Histogram", imgHist)
+    cv2.imshow("Result", imgResult)
     return None
 
 if __name__=='__main__':
